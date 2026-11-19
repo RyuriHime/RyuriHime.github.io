@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RyuriHime · 写作台</title>
+<link rel="icon" href="/images/avatar-round.png">
+<link rel="stylesheet" href="/admin-assets/vditor/dist/index.css">
+<link rel="stylesheet" href="/admin-assets/ui/admin.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">RyuriHime <span>写作台</span></div>
+  <label class="filter"><input id="filter" placeholder="筛选文章、页面或配置" autocomplete="off"></label>
+  <div class="top-actions">
+    <button id="new">＋ 新建文章</button>
+    <button id="typoraBtn" class="ghost" hidden>在 Typora 中打开</button>
+    <a class="btn ghost" href="http://127.0.0.1:4000" target="_blank" rel="noopener">打开博客 ↗</a>
+    <button id="build">重新构建</button>
+  </div>
+</header>
+
+<main>
+  <aside id="list"><h3>加载中…</h3></aside>
+
+  <section class="workspace">
+    <div class="docbar" id="docbar" hidden>
+      <span class="docpath" id="path"></span>
+      <span class="dirty" id="dirty" hidden>未保存</span>
+      <span class="sp"></span>
+      <button id="reload" title="从磁盘重新读取当前文件">重新载入</button>
+      <button id="modeBtn" title="在即时渲染与 Markdown 源码之间切换">源码</button>
+      <button id="focusBtn" title="隐藏侧栏，专注当前文档">专注</button>
+      <button id="save">保存</button>
+      <button id="saveBuild" class="primary">保存并构建</button>
+    </div>
+
+    <div class="meta" id="meta" hidden>
+      <label class="wide">标题<input id="m-title" placeholder="文章标题" autocomplete="off"></label>
+      <label>日期<input id="m-date" placeholder="2026-11-18 12:00:00" autocomplete="off"></label>
+      <label class="tax" data-tax="categories">分类<input id="m-cat" placeholder="学习笔记, 题解" autocomplete="off"></label>
+      <label class="tax" data-tax="tags">标签<input id="m-tags" placeholder="OI 时期, ACM" autocomplete="off"></label>
+    </div>
+
+    <div class="profile-panel" id="profilePanel" hidden>
+      <div class="profile-bar">
+        <span class="docpath">source/_data/profile.yml</span>
+        <span class="dirty" id="pfDirty" hidden>未保存</span>
+        <span class="sp"></span>
+        <button id="pfReload" title="丢弃修改并从磁盘重新读取">重新载入</button>
+        <button id="pfSave">保存</button>
+        <button id="pfSaveBuild" class="primary">保存并构建</button>
+      </div>
+      <div class="profile-scroll">
+        <div class="pf-grid">
+          <label>名字<input id="pfName" autocomplete="off" placeholder="RyuriHime"></label>
+          <label>一句话介绍<input id="pfTagline" autocomplete="off" placeholder="可留空"></label>
+        </div>
+        <label>页面标题<input id="pfTitle" autocomplete="off" placeholder="关于"></label>
+        <label>头像地址<input id="pfAvatar" autocomplete="off" placeholder="/images/avatar.webp"></label>
+        <label class="pf-bio">简介<textarea id="pfBio" rows="9" placeholder="写点关于自己的话。空一行表示分段。"></textarea></label>
+        <div class="pf-contacts">
+          <div class="pf-contacts-head">
+            <h4>联系方式</h4>
+            <button id="pfAdd" type="button">＋ 添加一行</button>
+          </div>
+          <div id="pfLinks"></div>
+        </div>
+        <p class="pf-hint">保存并构建后，刷新博客预览即可看到新的关于页。图标可填 Font Awesome 类名，例如 <code>fab fa-github</code>、<code>fas fa-envelope</code>。</p>
+      </div>
+    </div>
+
+    <div class="profile-panel" id="sitePanel" hidden>
+      <div class="profile-bar">
+        <span class="docpath">站点文案</span>
+        <span class="dirty" id="stDirty" hidden>未保存</span>
+        <span class="sp"></span>
+        <button id="stReload" title="丢弃修改并从磁盘重新读取">重新载入</button>
+        <button id="stSave">保存</button>
+        <button id="stSaveBuild" class="primary">保存并构建</button>
+      </div>
+      <div class="profile-scroll">
+        <div class="pf-grid">
+          <label>站点名称<input id="stTitle" autocomplete="off" placeholder="RyuriHime"></label>
+          <label>副标题<input id="stSubtitle" autocomplete="off" placeholder="可留空"></label>
+        </div>
+        <label>浏览器标签标题<input id="stTabTitle" autocomplete="off" placeholder="RyuriHime 的个人站"></label>
+        <label>站点描述<input id="stDescription" autocomplete="off" placeholder="用于搜索结果和分享卡片"></label>
+        <label>关键词<input id="stKeywords" autocomplete="off" placeholder="逗号分隔"></label>
+        <div class="pf-grid">
+          <label>作者<input id="stAuthor" autocomplete="off"></label>
+          <label>404 提示<input id="stNotFound" autocomplete="off"></label>
+        </div>
+        <label>页脚文字<input id="stFooter" autocomplete="off" placeholder="留空则不显示"></label>
+        <label>侧栏签名<input id="stAside" autocomplete="off" placeholder="留空则不显示"></label>
+        <label>公告文字<textarea id="stNotice" rows="3" placeholder="留空或关闭开关后不显示公告"></textarea></label>
+        <label class="pf-check"><input type="checkbox" id="stNoticeOn"> 显示公告</label>
+        <div class="pf-contacts">
+          <div class="pf-contacts-head">
+            <h4>导航菜单</h4>
+            <button id="stAddNav" type="button">＋ 添加一项</button>
+          </div>
+          <div id="stNav"></div>
+        </div>
+        <p class="pf-hint">站点名称会出现在浏览器标签和顶部导航。页脚、侧栏签名、公告留空后不会渲染。</p>
+      </div>
+    </div>
+
+    <div class="profile-panel" id="wallPanel" hidden>
+      <div class="profile-bar">
+        <span class="docpath">壁纸</span>
+        <span class="sp"></span>
+        <button id="wpBuild">重新生成并构建</button>
+      </div>
+      <div class="profile-scroll">
+        <div class="wall-preview"><img id="wpPreview" alt="当前壁纸"></div>
+        <label class="wall-file">选择新壁纸<input id="wpFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <button id="wpUpload" class="primary">上传并应用</button>
+        <p class="pf-hint" id="wpHint">原图保存在仓库外的 <code>private-assets/wallpapers</code>。公开站只发布乱序字节碎片，拼回后与源图逐字节一致。上传后会自动生成各尺寸与碎片并重新构建。</p>
+      </div>
+    </div>
+
+    <div class="editor-shell" id="shell">
+      <div class="intro" id="intro">
+        <div>
+          <div class="kicker">RYURIHIME · WRITING DESK</div>
+          <h1>像 Typora 一样写 Markdown</h1>
+          <p>左侧选文章。正文在「即时渲染」里直接写，标题、日期、分类和标签在顶部改；需要动 front matter 或 HTML 时切到「源码」。</p>
+          <p>点「在 Typora 中打开」会用本机 Typora 打开当前文件。Typora 保存后，这里会自动同步，不需要手动刷新。</p>
+          <p><kbd>Ctrl</kbd> + <kbd>S</kbd> 保存，<kbd>Ctrl</kbd> + <kbd>P</kbd> 筛选文件，<kbd>Esc</kbd> 退出专注模式。</p>
+        </div>
+      </div>
+      <div id="vditor" hidden></div>
+      <textarea id="editor" spellcheck="false" hidden></textarea>
+    </div>
+
+    <div class="statusbar">
+      <span><i class="dot"></i>仅本机可访问</span>
+      <span id="typoraState" class="muted"></span>
+      <span id="msg" class="msg"></span>
+      <span id="counter" class="counter"></span>
+    </div>
+  </section>
+</main>
+
+<button id="focusExit" hidden>退出专注 · Esc</button>
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg">
+  <form method="dialog" class="dlg">
+    <h2>新建文章</h2>
+    <label>标题<input id="f-title" placeholder="例如：Codeforces Round 1000 记录"></label>
+    <label>日期<input id="f-date" placeholder="留空则使用当前时间"></label>
+    <label>分类<input id="f-cat" placeholder="学习笔记 / 题解 / 比赛记录 / 游记 / 杂谈"></label>
+    <label>标签（逗号分隔）<input id="f-tags" value="ACM"></label>
+    <div class="row">
+      <button value="cancel">取消</button>
+      <button class="primary" id="create" value="default">创建</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/admin-assets/vditor/dist/index.min.js"></script>
+<script src="/admin-assets/ui/admin.js"></script>
+</body>
+</html>

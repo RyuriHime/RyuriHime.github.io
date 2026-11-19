@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" role="img" aria-label="RyuriHime pastel background">
+<defs>
+  <linearGradient id="base" x1="0" y1="0" x2="0.65" y2="1">
+    <stop offset="0" stop-color="#fcf7ff"/>
+    <stop offset=".46" stop-color="#f2f7ff"/>
+    <stop offset="1" stop-color="#fff4f9"/>
+  </linearGradient>
+  <radialGradient id="lilac" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#d9b8ff" stop-opacity=".58"/>
+    <stop offset=".62" stop-color="#d9b8ff" stop-opacity=".18"/>
+    <stop offset="1" stop-color="#d9b8ff" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="rose" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#ffc2dd" stop-opacity=".52"/>
+    <stop offset=".64" stop-color="#ffc2dd" stop-opacity=".16"/>
+    <stop offset="1" stop-color="#ffc2dd" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="sky" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#b9dcff" stop-opacity=".55"/>
+    <stop offset=".66" stop-color="#b9dcff" stop-opacity=".14"/>
+    <stop offset="1" stop-color="#b9dcff" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="cream" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#ffe9bd" stop-opacity=".45"/>
+    <stop offset="1" stop-color="#ffe9bd" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<rect width="1920" height="1080" fill="url(#base)"/>
+<ellipse cx="330" cy="210" rx="680" ry="500" fill="url(#lilac)"/>
+<ellipse cx="1560" cy="160" rx="760" ry="540" fill="url(#rose)"/>
+<ellipse cx="1210" cy="940" rx="820" ry="560" fill="url(#sky)"/>
+<ellipse cx="190" cy="1010" rx="680" ry="440" fill="url(#cream)"/>
+<g fill="#ffffff" opacity=".5">
+  <circle cx="420" cy="520" r="4"/>
+  <circle cx="880" cy="300" r="3"/>
+  <circle cx="1240" cy="620" r="5"/>
+  <circle cx="1660" cy="760" r="3"/>
+  <circle cx="260" cy="760" r="3"/>
+</g>
+</svg>

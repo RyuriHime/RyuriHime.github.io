@@ -1,0 +1,14 @@
+node_modules/
+public/
+.deploy_git/
+db.json
+*.log
+__pycache__/
+*.pyc
+
+# Paid / personal visual assets: never commit originals or build derivatives.
+private-assets/
+source/assets/private/
+
+.DS_Store
+Thumbs.db
