@@ -551,6 +551,126 @@ def build_site() -> tuple[int, str]:
     return proc.returncode, output[-6000:]
 
 
+PUBLISH_BLOCKED_PREFIXES = (
+    "public/",
+    "node_modules/",
+    "private-assets/",
+    "source/assets/private/",
+)
+
+
+def run_git(args: list[str], timeout: int = 120) -> tuple[int, str]:
+    """Run git, allowing a one-time credential prompt for ``git push``."""
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    # Publishing is user-initiated. Let Git Credential Manager reuse its stored
+    # login, or show its GitHub login window once when authorization is needed.
+    env["GCM_INTERACTIVE"] = "auto"
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            env=env,
+        )
+    except Exception as exc:
+        return 1, f"{type(exc).__name__}: {exc}"
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def publish_site() -> dict:
+    """Commit the current source changes and push them to GitHub."""
+    code, output = run_git(["rev-parse", "--show-toplevel"])
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "message": "当前目录不是 Git 仓库",
+            "output": output[-4000:],
+        }
+
+    code, status = run_git(["status", "--porcelain"])
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "message": "读取 Git 状态失败",
+            "output": status[-4000:],
+        }
+    if not status.strip():
+        return {
+            "ok": True,
+            "published": False,
+            "message": "没有需要发布的改动",
+            "output": "",
+        }
+
+    code, output = run_git(["add", "-A"])
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "message": "暂存改动失败",
+            "output": output[-6000:],
+        }
+
+    code, staged = run_git(["diff", "--cached", "--name-only"])
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "message": "读取待提交文件失败",
+            "output": staged[-6000:],
+        }
+    blocked = [
+        path
+        for path in staged.splitlines()
+        if any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in PUBLISH_BLOCKED_PREFIXES)
+    ]
+    if blocked:
+        run_git(["reset", "--", *blocked])
+        return {
+            "ok": False,
+            "published": False,
+            "message": "检测到不应发布的文件，已取消提交",
+            "output": "\n".join(blocked),
+        }
+
+    message = "Publish from writing desk: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    code, output = run_git(["commit", "-m", message])
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "message": "提交失败",
+            "output": output[-6000:],
+        }
+
+    code, commit = run_git(["rev-parse", "--short", "HEAD"])
+    commit_hash = commit.strip() if code == 0 else ""
+    code, push_output = run_git(["push", "origin", "HEAD:main"], timeout=180)
+    if code != 0:
+        return {
+            "ok": False,
+            "published": False,
+            "commit": commit_hash,
+            "message": "已在本地提交，但推送到 GitHub 失败",
+            "output": push_output[-6000:],
+        }
+
+    return {
+        "ok": True,
+        "published": True,
+        "commit": commit_hash,
+        "message": "已推送到 GitHub",
+        "output": push_output[-4000:],
+    }
+
+
 INDEX_HTML = r"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -871,6 +991,28 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/build":
                 code, output = build_site()
                 self._json({"ok": code == 0, "output": output})
+                return
+            if parsed.path == "/api/publish":
+                build_code, build_output = build_site()
+                if build_code != 0:
+                    self._json({
+                        "ok": False,
+                        "stage": "build",
+                        "published": False,
+                        "message": "构建失败，未发布",
+                        "output": build_output,
+                    })
+                    return
+                result = publish_site()
+                combined = "\n\n".join(
+                    part for part in (build_output, str(result.get("output", ""))) if part
+                )
+                result.update({
+                    "stage": "done" if result.get("ok") else "publish",
+                    "build_output": build_output,
+                    "output": combined[-6000:],
+                })
+                self._json(result)
                 return
             if parsed.path == "/api/assets/prepare":
                 build_code, build_output = build_site()

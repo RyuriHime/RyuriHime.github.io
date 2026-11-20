@@ -74,6 +74,16 @@ button:disabled { opacity: .55; cursor: wait; }
 .filter input { height: 32px; padding: 0 11px; background: #f7f8fa; }
 .filter input:focus, .meta input:focus, .dlg input:focus { border-color: #c4aee0; box-shadow: 0 0 0 3px rgba(124, 90, 166, .08); }
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.auto-publish {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.auto-publish input { width: auto; margin: 0; accent-color: var(--accent); }
 
 main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
 aside {

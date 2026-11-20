@@ -21,6 +21,7 @@
   };
   let vditor = null;
 
+  const AUTO_PUBLISH_KEY = "ryuri.autoPublish";
   const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
   function toast(text, bad = false) {
@@ -34,6 +35,36 @@
 
   function msg(text) {
     $("#msg").textContent = text || "";
+  }
+
+  function publishEnabled() {
+    const toggle = $("#autoPublish");
+    return !toggle || toggle.checked;
+  }
+
+  function syncPublishButtons() {
+    const label = publishEnabled() ? "保存并发布" : "保存并构建";
+    ["#saveBuild", "#pfSaveBuild", "#stSaveBuild"].forEach((selector) => {
+      const button = $(selector);
+      if (button) button.textContent = label;
+    });
+  }
+
+  function initAutoPublish() {
+    const toggle = $("#autoPublish");
+    if (!toggle) return;
+    try {
+      const saved = window.localStorage.getItem(AUTO_PUBLISH_KEY);
+      if (saved !== null) toggle.checked = saved !== "0";
+    } catch (error) { /* storage may be unavailable */ }
+    syncPublishButtons();
+    toggle.addEventListener("change", () => {
+      try {
+        window.localStorage.setItem(AUTO_PUBLISH_KEY, toggle.checked ? "1" : "0");
+      } catch (error) { /* ignore */ }
+      syncPublishButtons();
+      toast(toggle.checked ? "保存并发布会推送 GitHub" : "保存并构建只更新本地");
+    });
   }
 
   async function api(url, options) {
@@ -481,7 +512,7 @@
       clearDirty();
       msg(`已保存 ${state.current}`);
       toast("已保存");
-      if (build) await doBuild();
+      if (build) await doBuild(true);
     } catch (error) {
       msg(`保存失败：${error.message}`);
       toast(`保存失败：${error.message}`, true);
@@ -524,28 +555,44 @@
     dialog.showModal();
   }
 
-  async function doBuild() {
+  async function doBuild(publish = false) {
     const buildButton = $("#build");
     const saveButton = $("#saveBuild");
+    const publishToggle = $("#autoPublish");
+    const willPublish = Boolean(publish && publishEnabled());
     buildButton.disabled = true;
     saveButton.disabled = true;
-    msg("构建中…");
+    if (publishToggle) publishToggle.disabled = true;
+    msg(willPublish ? "构建并发布中…" : "构建中…");
     try {
-      const result = await api("/api/build", { method: "POST" });
+      const result = await api(willPublish ? "/api/publish" : "/api/build", { method: "POST" });
       if (result.ok) {
-        msg("构建完成");
-        toast("构建完成，刷新博客预览即可");
+        if (willPublish) {
+          if (result.published) {
+            msg(`构建完成，已发布${result.commit ? `（${result.commit}）` : ""}`);
+            toast(result.commit ? `已发布到 GitHub（${result.commit}）` : "已发布到 GitHub");
+          } else {
+            msg(result.message || "构建完成，没有需要发布的改动");
+            toast(result.message || "构建完成");
+          }
+        } else {
+          msg("构建完成");
+          toast("构建完成，刷新博客预览即可");
+        }
       } else {
-        msg("构建失败");
-        toast("构建失败", true);
-        showOutput("构建失败", result.output);
+        const title = willPublish ? "发布失败" : "构建失败";
+        msg(title);
+        toast(title, true);
+        showOutput(title, result.output || result.build_output || result.publish_output || "");
       }
     } catch (error) {
-      msg(`构建失败：${error.message}`);
-      toast("构建失败", true);
+      const title = willPublish ? "发布失败" : "构建失败";
+      msg(`${title}：${error.message}`);
+      toast(title, true);
     } finally {
       buildButton.disabled = false;
       saveButton.disabled = false;
+      if (publishToggle) publishToggle.disabled = false;
     }
   }
 
@@ -750,7 +797,7 @@
       $("#pfDirty").hidden = true;
       msg("关于页已保存");
       toast("关于页已保存");
-      if (build) await doBuild();
+      if (build) await doBuild(true);
     } catch (error) {
       msg(`保存失败：${error.message}`);
       toast(`保存失败：${error.message}`, true);
@@ -869,7 +916,7 @@
       $("#stDirty").hidden = true;
       msg("站点文案已保存");
       toast("站点文案已保存");
-      if (build) await doBuild();
+      if (build) await doBuild(true);
     } catch (error) {
       msg(`保存失败：${error.message}`);
       toast(`保存失败：${error.message}`, true);
@@ -896,7 +943,7 @@
         image.hidden = true;
       }
       $("#wpHint").innerHTML = info.exists
-        ? `当前壁纸来自 <code>${esc(info.source)}</code>。公开站只发布乱序字节碎片。`
+        ? `当前壁纸来自 <code>${esc(info.source)}</code>。`
         : `还没有生成壁纸，请选择一张图片。原图会保存在 <code>${esc(info.source)}</code>。`;
       state.current = null;
       state.kind = "wall";
@@ -962,6 +1009,7 @@
   }
 
   function bind() {
+    initAutoPublish();
     $("#save").addEventListener("click", () => save(false));
     $("#saveBuild").addEventListener("click", () => save(true));
     $("#reload").addEventListener("click", reload);
@@ -1001,7 +1049,7 @@
     $("#modeBtn").addEventListener("click", toggleMode);
     $("#focusBtn").addEventListener("click", () => toggleFocus());
     $("#focusExit").addEventListener("click", () => toggleFocus(false));
-    $("#build").addEventListener("click", doBuild);
+    $("#build").addEventListener("click", () => doBuild(false));
     $("#typoraBtn").addEventListener("click", openTypora);
     $("#filter").addEventListener("input", applyFilter);
     $("#pfSave").addEventListener("click", () => saveProfile(false));
