@@ -19,6 +19,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import webbrowser
 
@@ -560,12 +561,10 @@ PUBLISH_BLOCKED_PREFIXES = (
 
 
 def run_git(args: list[str], timeout: int = 120) -> tuple[int, str]:
-    """Run git, allowing a one-time credential prompt for ``git push``."""
+    """Run a local git command without opening an interactive prompt."""
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
-    # Publishing is user-initiated. Let Git Credential Manager reuse its stored
-    # login, or show its GitHub login window once when authorization is needed.
-    env["GCM_INTERACTIVE"] = "auto"
+    env["GCM_INTERACTIVE"] = "never"
     try:
         proc = subprocess.run(
             ["git", *args],
@@ -580,6 +579,107 @@ def run_git(args: list[str], timeout: int = 120) -> tuple[int, str]:
     except Exception as exc:
         return 1, f"{type(exc).__name__}: {exc}"
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def read_git_credential(target: str = "git:https://github.com") -> tuple[str, str] | None:
+    """Read a generic credential already stored by Git Credential Manager."""
+    if os.name != "nt":
+        return None
+
+    import ctypes
+    from ctypes import wintypes
+
+    class FILETIME(ctypes.Structure):
+        _fields_ = [
+            ("dwLowDateTime", wintypes.DWORD),
+            ("dwHighDateTime", wintypes.DWORD),
+        ]
+
+    class CREDENTIAL(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_byte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    advapi32.CredReadW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(ctypes.POINTER(CREDENTIAL)),
+    ]
+    advapi32.CredReadW.restype = wintypes.BOOL
+    advapi32.CredFree.argtypes = [ctypes.POINTER(CREDENTIAL)]
+    advapi32.CredFree.restype = None
+
+    credential_ptr = ctypes.POINTER(CREDENTIAL)()
+    if not advapi32.CredReadW(target, 1, 0, ctypes.byref(credential_ptr)):
+        return None
+    try:
+        credential = credential_ptr.contents
+        size = int(credential.CredentialBlobSize)
+        if size <= 0 or not credential.CredentialBlob:
+            return None
+        raw = ctypes.string_at(credential.CredentialBlob, size)
+        password = raw.decode("utf-16-le", errors="ignore").rstrip("\x00")
+        username = credential.UserName or "RyuriHime"
+        if not password:
+            return None
+        return username, password
+    finally:
+        advapi32.CredFree(credential_ptr)
+
+
+def run_git_push(args: list[str], timeout: int = 180) -> tuple[int, str]:
+    """Push with the stored token through an ephemeral askpass helper."""
+    credential = read_git_credential()
+    if not credential:
+        return 1, "没有找到已保存的 GitHub 凭据，无法自动发布"
+
+    username, token = credential
+    temp_dir = Path(tempfile.mkdtemp(prefix="ryuri-git-"))
+    askpass = temp_dir / "askpass.cmd"
+    askpass.write_text(
+        "@echo off\n"
+        "if /I \"%~1\"==\"Username\" (\n"
+        "  echo %RYURI_GIT_USER%\n"
+        ") else (\n"
+        "  echo %RYURI_GIT_TOKEN%\n"
+        ")\n",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["GIT_ASKPASS"] = str(askpass)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GCM_INTERACTIVE"] = "never"
+    env["RYURI_GIT_USER"] = username
+    env["RYURI_GIT_TOKEN"] = token
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "credential.helper=", *args],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            env=env,
+        )
+        return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+    except Exception as exc:
+        return 1, f"{type(exc).__name__}: {exc}"
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def publish_site() -> dict:
@@ -652,7 +752,7 @@ def publish_site() -> dict:
 
     code, commit = run_git(["rev-parse", "--short", "HEAD"])
     commit_hash = commit.strip() if code == 0 else ""
-    code, push_output = run_git(["push", "origin", "HEAD:main"], timeout=180)
+    code, push_output = run_git_push(["push", "origin", "HEAD:main"], timeout=180)
     if code != 0:
         return {
             "ok": False,

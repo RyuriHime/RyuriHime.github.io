@@ -16,7 +16,7 @@
     <button id="new">＋ 新建文章</button>
     <button id="typoraBtn" class="ghost" hidden>在 Typora 中打开</button>
     <a class="btn ghost" href="http://127.0.0.1:4000" target="_blank" rel="noopener">打开博客 ↗</a>
-    <label class="auto-publish" title="开启后，保存并发布会先构建，再提交并推送到 GitHub；首次可能需要登录">
+    <label class="auto-publish" title="开启后，保存并发布会先构建，再使用本机已保存的 GitHub 凭据推送">
       <input id="autoPublish" type="checkbox" checked>
       <span>构建后发布</span>
     </label>
@@ -131,7 +131,7 @@
           <h1>像 Typora 一样写 Markdown</h1>
           <p>左侧选文章。正文在「即时渲染」里直接写，标题、日期、分类和标签在顶部改；需要动 front matter 或 HTML 时切到「源码」。</p>
           <p>点「在 Typora 中打开」会用本机 Typora 打开当前文件。Typora 保存后，这里会自动同步，不需要手动刷新。</p>
-          <p><kbd>Ctrl</kbd> + <kbd>S</kbd> 保存，<kbd>Ctrl</kbd> + <kbd>P</kbd> 筛选文件，<kbd>Esc</kbd> 退出专注模式。顶部开启「构建后发布」时，保存并发布会自动推送到 GitHub；首次可能需要登录一次。</p>
+          <p><kbd>Ctrl</kbd> + <kbd>S</kbd> 保存，<kbd>Ctrl</kbd> + <kbd>P</kbd> 筛选文件，<kbd>Esc</kbd> 退出专注模式。顶部开启「构建后发布」时，保存并发布会自动推送到 GitHub，不会弹出登录窗口。</p>
         </div>
       </div>
       <div id="vditor" hidden></div>
